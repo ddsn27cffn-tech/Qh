@@ -144,9 +144,9 @@ const TIPUSOK = {
   MAGNES:    {nev:"🧲 Mágnes",      cimke:"mag", suly:0},
   FLIP:      {nev:"⚖️ Flip",        cimke:"mag", suly:0}
   };
-// ── A KULCS KEMÉNYEN BEÍRVA (két darabban, így nem olvasható azonnal) ──
-const KULCS_A = "A_TE_KULCSOD_ELSO_FELE";4beaf1c5d89943c29d  // ⬅️ IDE ÍRD A KULCS ELSŐ FELÉT
-const KULCS_B = "A_TE_KULCSOD_MASODIK_FELE";7ae9d92e10ebfe // ⬅️ IDE A MÁSODIK FELÉT
+  // ── A KULCS KEMÉNYEN BEÍRVA (két darabban) ──
+const KULCS_A = "4beaf1c5d89943c29d";
+const KULCS_B = "7ae9d92e10ebfe";
 
 var ALL = beolvas("qh40", {
   tdk:null,
@@ -158,11 +158,10 @@ var ALL = beolvas("qh40", {
   jeltort:[], tema:"sotet"
 });
 while (ALL.szintek.length < 6) ALL.szintek.push({s:"",t:"TAMASZ"});
-if (!ALL.tdk) ALL.tdk = 4beaf1c5d89943c29d + 7ae9d92e10ebfe;
-const KULCS_A = "4beaf1c5d89943c29d";
-const KULCS_B = "7ae9d92e10ebfe";
+if (!ALL.tdk) ALL.tdk = KULCS_A + KULCS_B;
 
 function ment(){ tarol("qh40", JSON.stringify(ALL)); }
+
 
 // ── NAPVÁLTÁS: a tegnapi GEX és napló automatikusan takarítás ──
 function napvaltas(){
