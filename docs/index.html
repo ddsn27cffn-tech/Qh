@@ -1,1 +1,580 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QH AGY 4.0</title>
+<style>
+* { box-sizing:border-box; margin:0; }
+body { background:#0a0e14; color:#e6edf3; font-family:'Segoe UI',system-ui,sans-serif; padding:14px; transition:.3s; }
+body.vilagos { background:#f0f2f5; color:#1a1f26; }
+.wrap { max-width:1150px; margin:auto; }
+h1 { font-size:22px; margin-bottom:12px; } h1 b { color:#d29922; }
+h1 .statusz { font-weight:normal; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; }
+.card { background:#131a24; border:1px solid #263041; border-radius:12px; padding:13px; transition:.3s; }
+.vilagos .card { background:#fff; border-color:#d5dae2; }
+.card h2 { margin:0 0 8px; font-size:11px; color:#8b949e; text-transform:uppercase; letter-spacing:1px; }
+.vilagos .card h2, .vilagos .statusz, .vilagos .magyarazat { color:#6a7480; }
+table { width:100%; border-collapse:collapse; font-size:14px; }
+td { padding:4px 3px; border-bottom:1px solid #1c2530; }
+.vilagos td { border-color:#e3e7ee; }
+.fel{color:#3fb950}.le{color:#f85149}.sem{color:#d29922}.mag{color:#58a6ff}
+#velemeny { font-size:14px; line-height:1.6; }
+#atfogo { white-space:pre-line; font-size:14px; line-height:1.6; background:#0d1420; border:1px solid #1c2530; border-radius:8px; padding:10px; }
+.vilagos #atfogo { background:#f6f8fa; border-color:#d5dae2; }
+.nagy { font-size:30px; font-weight:bold; padding:4px 0; }
+.pontk { display:inline-block; padding:2px 10px; border-radius:12px; font-size:13px; font-weight:bold; margin-left:8px; vertical-align:middle; }
+.p-eros { background:#1a3a1a; color:#3fb950; border:1px solid #3fb950; }
+.p-kozep { background:#3a2e10; color:#d29922; border:1px solid #d29922; }
+.p-gyenge{ background:#2a2a2a; color:#8b949e; border:1px solid #555; }
+.statusz { font-size:11px; color:#8b949e; }
+.magyarazat { font-size:12px; color:#8b949e; margin-top:5px; line-height:1.5; }
+.riaszt { background:#3d1114; border:1px solid #f85149; border-radius:8px; padding:8px 10px; margin:6px 0; color:#f85149; font-weight:bold; font-size:13px; }
+label { font-size:12px; color:#8b949e; display:block; margin-top:6px; }
+input, select { background:#0a0e14; color:#e6edf3; border:1px solid #263041; border-radius:6px; padding:5px 8px; width:100%; margin:2px 0; font-size:14px; }
+.vilagos input, .vilagos select { background:#fff; color:#1a1f26; border-color:#d5dae2; }
+button { background:#238636; color:#fff; border:none; border-radius:6px; padding:7px 14px; cursor:pointer; margin:8px 6px 0 0; font-size:13px; }
+button.szurke { background:#30363d; } button.kicsi { padding:4px 10px; font-size:12px; }
+.zsor { display:grid; grid-template-columns:1fr 160px; gap:6px; align-items:center; margin:7px 0; }
+.gexzsor { display:grid; grid-template-columns:110px 1fr; gap:6px; align-items:center; margin:5px 0; font-size:13px; }
+#spark { width:100%; height:70px; }
+.jelnaplo { font-size:12px; max-height:160px; overflow-y:auto; }
+.jelnap { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #1c2530; }
+.vilagos .jelnap { border-color:#e3e7ee; }
+/* ── GEX SÁV: vizuális térkép ── */
+.gexsav { position:relative; height:46px; background:#0d1420; border-radius:8px; margin:8px 0; border:1px solid #1c2530; }
+.vilagos .gexsav { background:#eef1f5; border-color:#d5dae2; }
+.gexjel { position:absolute; top:0; bottom:0; width:2px; }
+.gexjel span { position:absolute; top:-16px; left:-24px; font-size:10px; white-space:nowrap; }
+.gexpot { position:absolute; top:16px; width:14px; height:14px; border-radius:50%; background:#58a6ff; box-shadow:0 0 8px #58a6ff; transform:translateX(-7px); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>QH <b>AGY 4.0</b> <span class="statusz" id="utolso"></span>
+  <button class="kicsi szurke" style="float:right;margin:0" onclick="valtTema()">🌙/☀️</button></h1>
+
+<div class="grid">
+
+  <div class="card" style="grid-column:1/-1">
+    <h2>Jelenlegi tanács</h2>
+    <div class="nagy" id="jelzes">Betöltés…</div>
+    <div id="velemeny"></div>
+  </div>
+
+  <div class="card" style="grid-column:1/-1">
+    <h2>🗺️ GEX térkép – hol vagy a falak között?</h2>
+    <div class="gexsav" id="gexsav"><span class="statusz">Nincs GEX-adat ⚙️</span></div>
+    <div class="statusz" id="savinfo">A kék pont = jelenlegi ár. Zöld vonal = call fal, piros = put wall, kék = flip.</div>
+  </div>
+
+  <div class="card"><h2>🚨 Szint-riasztások</h2><div id="riasztok" class="statusz">Nincs riasztás</div></div>
+  <div class="card"><h2>📊 GEX helyzetkép</h2><div id="gexkartya" class="statusz">Még nincs GEX-adat ⚙️</div></div>
+  <div class="card"><h2>🌀 Charm &amp; 🔀 Skew</h2><div id="charmskew" class="statusz">GEX-adat nincs</div></div>
+  <div class="card"><h2>Árfolyamok (élő)</h2><table id="arak"><tr><td>…</td></tr></table></div>
+  <div class="card"><h2>📈 XAU trend (4 óra)</h2><canvas id="spark" width="280" height="70"></canvas><div class="statusz" id="sparkinfo"></div></div>
+  <div class="card"><h2>Szintek</h2><div id="szinttabla"></div></div>
+  <div class="card"><h2>📜 Jelzés-napló</h2><div id="jeltort" class="jelnaplo statusz">Még nincs…</div></div>
+
+  <div class="card" style="grid-column:1/-1">
+    <h2>🔭 Átfogó helyzetértékelés</h2>
+    <div id="atfogo">Betöltés…</div>
+  </div>
+
+  <div class="card" style="grid-column:1/-1"><h2>⚙️ Szintek beállítása</h2>
+    <button class="szurke" onclick="falakSzintekbe()">🪄 Falak + flip auto-betöltése</button>
+    <div id="szintek"></div>
+    <label>TwelveData kulcs:</label>
+    <input id="tdk" type="password" placeholder="kulcs">
+    <button onclick="mentSzint()">Mentés</button> <span class="statusz" id="mentve"></span>
+  </div>
+
+  <div class="card" style="grid-column:1/-1"><h2>⚙️ GEX adatok (Colab-riportból)</h2>
+    <div class="gexzsor"><span>🔒 Call Wall:</span><input id="g_cw" type="number"></div>
+    <div class="gexzsor"><span>🛡️ Put Wall:</span><input id="g_pw" type="number"></div>
+    <div class="gexzsor"><span>⚖️ Flip:</span><input id="g_zg" type="number"></div>
+    <div class="gexzsor"><span>🌀 Charm:</span><input id="g_ch" type="number" placeholder="pl. -204057"></div>
+    <div class="gexzsor"><span>🔀 IV Skew:</span><input id="g_sk" type="number" step="0.01" placeholder="pl. -8.3"></div>
+    <div class="gexzsor"><span>📊 Rezsim:</span>
+      <select id="g_rez">
+        <option value="auto">AUTO (flipből)</option>
+        <option value="elnyomas">ELNYOMÁS</option>
+        <option value="gyorsulas">GYORSULÁS</option>
+      </select></div>
+    <div class="gexzsor"><span>Dátum:</span><input id="g_datum" type="date"></div>
+    <div class="gexzsor"><span>Riport ideje:</span><input id="g_ido" placeholder="pl. 20:51"></div>
+    <div class="statusz" id="riportkor"></div>
+    <button onclick="mentGex()">GEX mentése</button> <span class="statusz" id="gexmentve"></span>
+  </div>
+
+  <div class="card" style="grid-column:1/-1"><h2>💾 Adatok kezelése</h2>
+    <button class="szurke" onclick="exportal()">⬇️ Beállítások exportálása</button>
+    <button class="szurke" onclick="document.getElementById('impfajl').click()">⬆️ Importálás</button>
+    <input type="file" id="impfajl" accept=".json" style="display:none" onchange="importal(this)">
+    <button class="szurke" onclick="torolMindent()">🗑️ Minden adat törlése</button>
+    <div class="statusz">Az export/import gépváltásnál is átviheti a szinteket + kulcsot.</div>
+  </div>
+
+</div>
+</div>
+
+<script>
+"use strict";
+// ════════════════════════════════════════════════
+//  QH AGY 4.0 — újraírt, moduláris, tartós tárolással
+// ════════════════════════════════════════════════
+
+// ── TÁROLÓ ──
+var TAROLHATO = false;
+try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); TAROLHATO = true; } catch(e){}
+var MEM = {};
+const tarol  = (k,v) => { if(TAROLHATO){ try{ localStorage.setItem(k,v); return; }catch(e){} } MEM[k]=v; };
+const olvas  = (k)   => { if(TAROLHATO){ try{ return localStorage.getItem(k); }catch(e){} } return MEM[k]||null; };
+const beolvas= (k,d) => { try { return JSON.parse(olvas(k)) ?? d; } catch(e){ return d; } };
+
+// ── ÁLLAPOT ──
+const TIPUSOK = {
+  CALL_FAL:  {nev:"🔒 Call fal",    cimke:"le",  suly:1},
+  CALL_EROS: {nev:"💪 Call fal ERŐS",cimke:"le", suly:2},
+  PUT_FAL:   {nev:"🛡️ Put fal",     cimke:"fel", suly:1},
+  PUT_EROS:  {nev:"💪 Put fal ERŐS", cimke:"fel", suly:2},
+  TAMASZ:    {nev:"🟢 Támasz",      cimke:"fel", suly:0},
+  ELLENALLAS:{nev:"🔴 Ellenállás",  cimke:"le",  suly:0},
+  MAGNES:    {nev:"🧲 Mágnes",      cimke:"mag", suly:0},
+  FLIP:      {nev:"⚖️ Flip",        cimke:"mag", suly:0}
+};
+
+var ALL = beolvas("qh40", {
+  tdk:null,
+  szintek:[
+    {s:"",t:"CALL_FAL"},{s:"",t:"PUT_FAL"},{s:"",t:"TAMASZ"},
+    {s:"",t:"TAMASZ"},{s:"",t:"ELLENALLAS"},{s:"",t:"MAGNES"}
+  ],
+  gex:{cw:null,pw:null,zg:null,ch:null,sk:null,rez:"auto",datum:"",ido:"",mentesIdo:null},
+  jeltort:[], tema:"sotet"
+});
+while (ALL.szintek.length < 6) ALL.szintek.push({s:"",t:"TAMASZ"});
+
+function ment(){ tarol("qh40", JSON.stringify(ALL)); }
+
+// ── NAPVÁLTÁS: a tegnapi GEX és napló automatikusan takarítás ──
+function napvaltas(){
+  const ma = new Date().toISOString().slice(0,10);
+  if (ALL.gex.datum && ALL.gex.datum !== ma){
+    ALL.gex = {cw:null,pw:null,zg:null,ch:null,sk:null,rez:"auto",datum:"",ido:"",mentesIdo:null};
+    ALL.jeltort = [];
+    ment();
+  }
+}
+
+// ── SEGÉDEK ──
+const $ = id => document.getElementById(id);
+const el = n => n>0?"+":"";
+const XAUkerek = n => Math.round(n*10)/10;
+
+// ════════════════ RAJZOLÓK ════════════════
+function rajzolInput(){
+  let html = "";
+  ALL.szintek.forEach((z,i)=>{
+    let opc = "";
+    for (const kod in TIPUSOK)
+      opc += `<option value="kod"{kod}"kod"{z.t===kod?" selected":""}>${TIPUSOK[kod].nev}</option>`;
+    html += `<div class="zsor"><input id="szi"type="number"placeholder="Szint{i}" type="number" placeholder="Szinti"type="number"placeholder="Szint{i+1}" value="${z.s}">
+             <select id="tpi">{i}">i">{opc}</select></div>`;
+  });
+  $("szintek").innerHTML = html;
+  $("tdk").value = ALL.tdk || "";
+}
+function rajzolGexInputs(){
+  const g = ALL.gex;
+  [["g_cw","cw"],["g_pw","pw"],["g_zg","zg"],["g_ch","ch"],["g_sk","sk"]].forEach(([id,k])=>{
+    $(id).value = g[k]==null ? "" : g[k];
+  });
+  $("g_rez").value = g.rez;
+  $("g_datum").value = g.datum || new Date().toISOString().slice(0,10);
+  $("g_ido").value = g.ido || "";
+  riportKor();
+}
+function rajzolTabla(){
+  const r = ALL.szintek.filter(z=>z.s).sort((a,b)=>b.s-a.s);
+  if (!r.length){ $("szinttabla").innerHTML='<span class="statusz">Nincsenek szintek</span>'; return; }
+  $("szinttabla").innerHTML = "<table>"+r.map(z=>{
+    const t = TIPUSOK[z.t]||TIPUSOK.TAMASZ;
+    return `<tr><td>t.nev</td><tdclass="{t.nev}</td><td class="t.nev</td><tdclass="{t.cimke}"><b>${z.s}</b></td></tr>`;
+  }).join("")+"</table>";
+}
+function rajzolJelNaplo(){
+  if (!ALL.jeltort.length){ $("jeltort").innerHTML="Még nincs naplózott jelzés."; return; }
+  $("jeltort").innerHTML = ALL.jeltort.map(n=>{
+    const d = new Date(n.t);
+    const cls = n.jel.startsWith("LONG")?"fel":n.jel.startsWith("SHORT")?"le":"sem";
+    return `<div class="jelnap"><span>d.toLocaleTimeString("hu−HU")–<bclass="{d.toLocaleTimeString("hu-HU")} – <b class="d.toLocaleTimeString("hu−HU")–<bclass="{cls}">n.jel</b>({n.jel}</b> (n.jel</b>({el(n.pont)}n.pont)⋅aˊr:{n.pont}) · ár:n.pont)⋅aˊr:{XAUkerek(n.ar)}</span><span class="statusz">erő: ${n.apont}/10</span></div>`;
+  }).join("");
+}
+
+// ── GEX TÉRKÉP (vizuális sáv) ──
+function rajzolGexSav(ar){
+  const sav = $("gexsav"), g = ALL.gex;
+  if (g.cw==null || g.pw==null || !ar){ return; }
+  const lo = Math.min(g.pw, g.cw, ar) - 15;
+  const hi = Math.max(g.pw, g.cw, ar) + 15;
+  const pos = x => ((x-lo)/(hi-lo)*100).toFixed(1);
+  sav.innerHTML =
+    `<div class="gexjel" style="left:pos(g.pw){pos(g.pw)}%;background:#f85149"><span style="color:#f85149">🛡️pos(g.pw){g.pw}</span></div>`+
+    `<div class="gexjel" style="left:pos(g.cw){pos(g.cw)}%;background:#3fb950"><span style="color:#3fb950;left:auto;right:-24px">🔒pos(g.cw){g.cw}</span></div>`+
+    (g.zg!=null?`<div class="gexjel" style="left:pos(g.zg){pos(g.zg)}%;background:#58a6ff"><span style="color:#58a6ff;top:auto;bottom:-16px">⚖️pos(g.zg){g.zg}</span></div>`:"")+
+    `<div class="gexpot" style="left:${pos(ar)}%"></div>`;
+  const savszel = Math.abs(g.cw-g.pw);
+  const bent = ar>Math.min(g.pw,g.cw) && ar<Math.max(g.pw,g.cw);
+  ("savinfo").innerHTML=‘Saˊvszeˊlesseˊge:<b>("savinfo").innerHTML = `Sáv szélessége: <b>("savinfo").innerHTML=‘Saˊvszeˊlesseˊge:<b>{savszel.toFixed(0)} pt</b> · azár ${bent?"<b class='fel'>a sáv BENT</b>":"<b class='le'>a sávon KÍVÜL</b>"}`+
+    (g.zg!=null?` · flip ${ar>g.zg?"felett ✅":"alatt ⚠️"}`:"");
+}
+
+// ── RIPORT-KOR ──
+function riportKor(){
+  const e = $("riportkor");
+  if (!ALL.gex.mentesIdo){ e.textContent=""; return; }
+  const perc = Math.round((Date.now()-ALL.gex.mentesIdo)/60000);
+  e.innerHTML = perc>180
+    ? "<span class='le'>⚠️ GEX-riport ELAVULT ("+perc+" perce) – futtasd a Colab-cellát!</span>"
+    : "<span class='fel'>Riport friss ("+perc+" perce mentve)</span>";
+}
+
+// ════════════════ MENTÉSEK ════════════════
+function mentSzint(){
+  ALL.tdk = $("tdk").value;
+  for (let i=0;i<6;i++){
+    const v = $("sz"+i).value;
+    ALL.szintek[i] = { s: v===""?"":+v, t: $("tp"+i).value };
+  }
+  ment();
+  $("mentve").textContent = TAROLHATO ? "mentve ✓ (tartós)" : "⚠️ csak munkamenet!";
+  rajzolInput(); rajzolTabla(); frissit();
+}
+function mentGex(){
+  const num = id => { const v=$(id).value; return v===""?null:+v; };
+  Object.assign(ALL.gex, {
+    cw:num("g_cw"), pw:num("g_pw"), zg:num("g_zg"), ch:num("g_ch"), sk:num("g_sk"),
+    rez:("grez").value,datum:("g_rez").value, datum:("gr​ez").value,datum:("g_datum").value, ido:$("g_ido").value, mentesIdo:Date.now()
+  });
+  ment();
+  $("gexmentve").textContent = "mentve ✓";
+  frissit();
+}
+function falakSzintekbe(){
+  const g = ALL.gex;
+  const betolt = [g.cw&&{s:g.cw,t:"CALL_FAL"}, g.pw&&{s:g.pw,t:"PUT_FAL"}, g.zg&&{s:g.zg,t:"FLIP"}].filter(Boolean);
+  betolt.forEach((b,i)=>{
+    const cel = ALL.szintek.findIndex(z=>!z.s || z.t===b.t);
+    if (cel>=0) ALL.szintek[cel]=b; else if (i<6) ALL.szintek[i]=b;
+  });
+  ment(); rajzolInput(); rajzolTabla(); frissit();
+}
+
+// ── EXPORT / IMPORT / TÖRLÉS ──
+function exportal(){
+  const blob = new Blob([JSON.stringify(ALL,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "qh_agy40_beallitasok.json";
+  a.click();
+}
+function importal(inp){
+  const f = inp.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      ALL = JSON.parse(r.result);
+      ment(); rajzolInput(); rajzolGexInputs(); rajzolTabla(); rajzolJelNaplo(); frissit();
+      alert("Importálva ✓");
+    } catch(e){ alert("Hibás fájl!"); }
+  };
+  r.readAsText(f);
+}
+function torolMindent(){
+  if (!confirm("Biztosan törlöd az ÖSSZES beállítást?")) return;
+  if (TAROLHATO) localStorage.removeItem("qh40");
+  location.reload();
+}
+function valtTema(){
+  document.body.classList.toggle("vilagos");
+  ALL.tema = document.body.classList.contains("vilagos") ? "vilagos" : "sotet";
+  ment();
+}
+
+// ════════════════ ADATLEKÉRÉS ════════════════
+const proxy = u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u);
+async function adatok(){
+  const P = {};
+  try {
+    const j = await (await fetch("https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=15min&outputsize=16&apikey="+ALL.tdk)).json();
+    const v = j.values.map(x=>+x.close).reverse();
+    if (v.length){
+      P["XAU/USD"] = { ar:v[v.length-1], valt:(v[v.length-1]/v[v.length-3]-1)*100 };
+      P._spark = v;
+    }
+  } catch(e){}
+  const parok = [["DXY","DX-Y.NYB"],["VIX","^VIX"],["EZÜST","SI=F"],["SPY","SPY"],["US10Y","^TNX"]];
+  await Promise.all(parok.map(async ([nev,sym])=>{
+    try {
+      const j2 = await (await fetch(proxy("https://query1.finance.yahoo.com/v8/finance/chart/"+sym+"?range=2d&interval=1d"))).json();
+      const m = j2.chart.result[0].meta;
+      P[nev] = { ar:m.regularMarketPrice, valt:(m.regularMarketPrice/m.chartPreviousClose-1)*100 };
+    } catch(e){}
+  }));
+  return P;
+}
+
+function spark(v){
+  const c = $("spark"), ctx = c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  if (!v || v.length<2) return;
+  const mn=Math.min(...v), mx=Math.max(...v), r=(mx-mn)||1;
+  ctx.beginPath();
+  v.forEach((x,i)=>{
+    const px=i/(v.length-1)*c.width, py=c.height-8-((x-mn)/r)*(c.height-16);
+    i?ctx.lineTo(px,py):ctx.moveTo(px,py);
+  });
+  const fel = v[v.length-1]>=v[0];
+  ctx.strokeStyle = fel?"#3fb950":"#f85149"; ctx.lineWidth=2; ctx.stroke();
+  ctx.lineTo(c.width,c.height); ctx.lineTo(0,c.height); ctx.closePath();
+  ctx.fillStyle = fel?"rgba(63,185,80,.12)":"rgba(248,81,73,.12)"; ctx.fill();
+  $("sparkinfo").textContent = "min "+mn.toFixed(1)+" · max "+mx.toFixed(1)+" · most "+v[v.length-1].toFixed(1);
+}
+
+// ════════════════ AZ AGY 4.0 ════════════════
+function agy(P){
+  let pont = 0; const ok = [];
+  const au = P["XAU/USD"], ar = au && au.ar ? au.ar : null;
+  const g = ALL.gex;
+  const ora = new Date().getHours();
+  const delutan = ora >= 13;
+
+  // Makró
+  if (P["DXY"]){
+    const d = P["DXY"].valt;
+    pont += d<-0.1?2:d>0.1?-2:0;
+    if (Math.abs(d)>0.3) ok.push(`DXY d>0?"ero\Hso¨dik":"gyengu¨l"(<bclass="{d>0?"erősödik":"gyengül"} (<b class="d>0?"ero\Hso¨dik":"gyengu¨l"(<bclass="{d>0?"le":"fel"}">${d.toFixed(2)}%</b>)`);
+  }
+  if (P["VIX"]){
+    const vv = P["VIX"].valt;
+    pont += vv>2?2:vv<-2?-1:0;
+    if (Math.abs(vv)>3) ok.push(`VIX <b class="vv>0?"fel":"le"">{vv>0?"fel":"le"}">vv>0?"fel":"le"">{vv.toFixed(1)}%</b>`);
+  }
+  if (ar){
+    pont += au.valt>0.15?1:au.valt<-0.15?-1:0;
+    ok.push(`Arany: <b>XAUkerek(ar)</b>({XAUkerek(ar)}</b> (XAUkerek(ar)</b>({el(au.valt)}${au.valt.toFixed(2)}%)`);
+  }
+
+  // Szintek
+  let feletti=null, alatti=null, gyorsulas=false;
+  if (ar){
+    const akt = ALL.szintek.filter(z=>z.s).sort((a,b)=>b.s-a.s);
+    for (const z of akt){
+      if (z.s>ar && !feletti) feletti=z;
+      else if (z.s<=ar && !alatti) alatti=z;
+    }
+    if (feletti){
+      const t = TIPUSOK[feletti.t];
+      ok.push(`Fölötted: t.nev<bclass="{t.nev} <b class="t.nev<bclass="{t.cimke}">feletti.s</b>(+{feletti.s}</b> (+feletti.s</b>(+{(feletti.s-ar).toFixed(1)} pt)`);
+      if (feletti.t==="CALL_EROS") pont-=2;
+      if (feletti.t==="CALL_FAL")  pont-=1;
+      if (feletti.t==="PUT_FAL"||feletti.t==="PUT_EROS"){
+        pont-=1;
+        ok.push("<span class='le'>⚠️ Put wall FELETTED! Rejtett ellenállás – áttörésnél gyorsulás lefelé!</span>");
+      }
+    }
+    if (alatti){
+      const t = TIPUSOK[alatti.t];
+      ok.push(`Alattad: t.nev<bclass="{t.nev} <b class="t.nev<bclass="{t.cimke}">alatti.s</b>({alatti.s}</b> (alatti.s</b>({(alatti.s-ar).toFixed(1)} pt)`);
+      if (alatti.t==="PUT_EROS") pont+=2;
+      if (alatti.t==="PUT_FAL")  pont+=1;
+      if (alatti.t==="MAGNES") ok.push("<span class='mag'>🧲 Mágnes alattad – visszahúzhat.</span>");
+    }
+  } else {
+    ok.push('<span class="sem">⚠️ Nincs élő arany-ár – ellenőrizd a TwelveData kulcsot!</span>');
+  }
+
+  // GEX
+  if (g.zg && ar){
+    const felett = ar > g.zg;
+    gyorsulas = !felett;
+    pont += felett ? 1 : -1;
+    ok.push(`Flip g.zg:<bclass="{g.zg}: <b class="g.zg:<bclass="{felett?"fel":"le"}">${felett?"FELETT ✅":"ALATT ⚠️"}</b>`);
+  }
+  if (g.ch != null && ar){
+    const suly = delutan ? 2 : 1;
+    const hat = g.ch * suly;
+    if (Math.abs(hat) > 30000){
+      pont += hat<0 ? -1 : 1;
+      ok.push(`Charm hat<0?"LEFELEˊ":"felfeleˊ"tol{hat<0?"LEFELÉ":"felfelé"} tolhat<0?"LEFELEˊ":"felfeleˊ"tol{suly===2?" <span class='sem'>(délutáni 2×!)</span>":""}`);
+    }
+  }
+  if (g.sk != null && Math.abs(g.sk) > 10){
+    pont += g.sk>0 ? -1 : 1;
+    ok.push("Skew "+g.sk+": "+(g.sk>0?"félelem – óvatosság":"call-hangulat"));
+  }
+  if (gyorsulas && pont>0){
+    pont = Math.floor(pont/2);
+    ok.push("<span class='sem'>⚡ GYORSULÁS-mód: LONG-pontszám felezve!</span>");
+  }
+
+  const jel = pont>=3 ? "LONG 💚" : pont<=-3 ? "SHORT ❤️" : "SEMLEGES 🟡";
+  const cls = pont>=3 ? "fel" : pont<=-3 ? "le" : "sem";
+
+  // AGY-AUTO erősség
+  let apont = 0;
+  if (g.ch != null) apont += Math.min(Math.abs(g.ch)/30000, 4);
+  if (g.zg && ar)   apont += Math.min(Math.abs(ar-g.zg)/(ar*0.01), 3);
+  if (g.sk != null) apont += Math.min(Math.abs(g.sk)/1.5, 2);
+  if (ar && g.pw && g.cw && ar>Math.min(g.pw,g.cw) && ar<Math.max(g.pw,g.cw)) apont += 1;
+  apont = Math.round(apont*10)/10;
+
+  return {pont, ok, jel, cls, apont, ar, gyorsulas,
+    aero: apont>=7?"ERŐS":apont>=4?"KÖZEPES":"GYENGE",
+    airany: (g.ch!=null && g.ch<0) ? "LE" : "FEL"};
+}
+
+// ── GEX KÁRTYÁK + RIASZTÁSOK ──
+function gexKartyak(ar){
+  const g = ALL.gex, s = [], riaszt = [];
+  if (g.cw!=null && ar){
+    const tav = Math.abs(g.cw-ar);
+    if (tav/ar < 0.003) riaszt.push(`🔒 CALL FAL (g.cw)csak{g.cw}) csakg.cw)csak{tav.toFixed(1)} pt-re! Fal-reakció várható – long innen NEM indul.`);
+    s.push(`<p>🔒 <b>Call Wall: g.cw</b>({g.cw}</b> (g.cw</b>({tav.toFixed(1)} pt ${g.cw>ar?"fölötted":"alattad"})</p>`);
+  }
+  if (g.pw!=null && ar){
+    const felett = ar < g.pw, tav = Math.abs(g.pw-ar);
+    if (felett && tav/ar < 0.005) riaszt.push(`🛡️ PUT WALL (g.pw)felett{g.pw}) felettg.pw)felett{tav.toFixed(1)} pt-re – ne kapd el a kést!`);
+    s.push(`<p>🛡️ <b>Put Wall: g.pw</b>({g.pw}</b> (g.pw</b>({tav.toFixed(1)} pt ${felett?"fölötted":"alattad"})</p>`);
+  }
+  if (g.zg!=null && ar){
+    const f = ar > g.zg;
+    if (!f && Math.abs(ar-g.zg)/ar < 0.004) riaszt.push(`⚖️ FLIP (${g.zg}) közel! Átkelés = rezsimváltás.`);
+    s.push(`<p>⚖️ <b>Flip: g.zg</b>–{g.zg}</b> –g.zg</b>–{f?"FELETTED ✅":"ALATTAD ⚠️"}</p>`);
+  }
+  if (g.ido) s.push(`<p class="statusz">Riport: g.datum∣∣""{g.datum||""}g.datum∣∣""{g.ido}</p>`);
+  return { html: s.join("") || "<span class='statusz'>GEX-adat nincs – töltsd ki az alsó panelből!</span>", riaszt };
+}
+
+function charmSkew(ar){
+  const g = ALL.gex, s = [];
+  if (g.ch != null){
+    const delutan = new Date().getHours() >= 13;
+    const le = g.ch < 0;
+    s.push(`<p>🌀 <b>Charm: ${g.ch.toLocaleString("hu
+  if (g.ch != null){
+    const delutan = new Date().getHours() >= 13;
+    const le = g.ch < 0;
+    const eros = Math.abs(g.ch) * (delutan?2:1) > 150000;
+    s.push(`<p>🌀 <b>Charm: g.ch.toLocaleString("hu−HU")</b>({g.ch.toLocaleString("hu-HU")}</b> (g.ch.toLocaleString("hu−HU")</b>({le?"LEFELÉ":"FELFELÉ"} tol)`
+      + (delutan ? " <span class='sem'>🕐 délutáni 2× súly</span>" : "")
+      + (eros ? " <span class='le'>– ERŐS!</span>" : "") + "</p>"
+      + `<div class="magyarazat">${le
+        ? (delutan ? "Negatív charm DÉLUTÁN: a hatás duplán lefelé nyom. Long csak támasz-reakcióból!"
+                   : "Negatív: 13:00 után lefelé nyomó hatás. Ha longolsz, lentről csináld.")
+        : "Pozitív: felfelé toló nyomás – a lehulló áraknál vételi érdeklődés ébredhet."}</div>`);
+  }
+  if (g.sk != null){
+    const ero = g.sk>15?"magas":g.sk>5?"mérsékelt":g.sk<-5?"CALL-oldali (ritka!)":"alacsony";
+    s.push(`<p>🔀 <b>IV Skew: g.sk</b>({g.sk}</b> (g.sk</b>({ero})</p><div class="magyarazat">${g.sk>15
+      ? "A piac sokat fizet a leesés-védelemért: félelem van, törések gyorsak. Kis méret, stop kötelező!"
+      : g.sk<-5 ? "Negatív skew: call-ek drágák – emelkedés-várakozás. A tetőnél óvatos!"
+      : "Nyugodtabb piac, a védelem olcsó."}</div>`);
+  }
+  const elny = g.rez=="auto" ? (g.zg && ar ? ar > g.zg : true) : g.rez=="elnyomas";
+  s.push(`<p>📊 <b>Rezsim: elny?"ELNYOMAˊS–fadeOK":"GYORSULAˊS–fadeoˊvatosan!"</b></p><divclass="magyarazat">{elny?"ELNYOMÁS – fade OK":"GYORSULÁS – fade óvatosan!"}</b></p><div class="magyarazat">elny?"ELNYOMAˊS–fadeOK":"GYORSULAˊS–fadeoˊvatosan!"</b></p><divclass="magyarazat">{elny
+    ? "Flip felett: a szintek közt oscillálás a barátod, falaknál fade-elhető."
+    : "Flip alatt: öngerjesztő mozgás, trend-irányban maradj, szűkebb stop!"}</div>`);
+  return s.join("") || "<span class='statusz'>GEX-adat nincs</span>";
+}
+
+// ── ÁTFOGÓ ──
+function atfogo(P, E){
+  const ar = E.ar;
+  if (!ar) return "Nincs élő arany-ár – a kulcsot ellenőrizd!";
+  const g = ALL.gex, sor = [];
+  sor.push(`📍 HELYZET: Az arany XAUkerek(ar)−enaˊll.AGY−AUTO:{XAUkerek(ar)}-en áll. AGY-AUTO:XAUkerek(ar)−enaˊll.AGY−AUTO:{E.airany}-irány, erősség E.apont/10({E.apont}/10 (E.apont/10({E.aero}).`);
+  if (g.cw && g.pw){
+    const terj = Math.abs(g.cw-g.pw);
+    sor.push("");
+    sor.push(`FALAK: put wall g.pw–callwall{g.pw} – call wallg.pw–callwall{g.cw} (${terj.toFixed(0)} pontos harctér).`);
+    const lo = Math.min(g.pw,g.cw), hi = Math.max(g.pw,g.cw);
+    if (ar>lo && ar<hi) sor.push("Az ár a sáv BELSEJÉBEN – tartomány-kereskedelem: sávcikka fade kis méretben, falaknál visszafordulás.");
+    else if (ar<lo)     sor.push(`Az ár a sáv ALATT (gamma-negatív) – gyorsuló piac, a ${lo} fal-reakcióig ne kapd el a kést.`);
+    else                sor.push("Az ár a sáv FELETT – a call wall felé húz (mágnes), fal ELŐTT zárás!");
+  }
+  if (g.zg) sor.push(`REZSIM: {ar>g.zg ? `Flip ({g.zg}) felett = ELNYOMÁS. Visszatérés a flip/fal felé.` : "Flip alatt = GYORSULÁS. Trend-irányban maradj, fade veszélyes."}`);
+  if (g.ch!=null) sor.push(`CHARM: ${g.ch<0 ? "Negatív ("+g.ch.toLocaleString("hu-HU")+"): délutáni lefelé nyomás. Long csak támasz-reakcióból." : "Pozitív: felfelé segít."}`);
+  if (g.sk!=null) sor.push(`SKEW: g.sk–{g.sk} –g.sk–{g.sk>15 ? "magas: félelem, gyors törések. Stop kötelező." : "mérsékelt/nyugodt."}`);
+  if (P["DXY"]) sor.push(`DOLLÁR: ${P["DXY"].valt>0.1 ? "Erősödik – aranyra nyomás." : "Gyengül – arany-barát háttér."}`);
+  if (P["VIX"]) sor.push(`FÉLELEM: VIX P["VIX"].valt.toFixed(1){P["VIX"].valt.toFixed(1)}% –P["VIX"].valt.toFixed(1){P["VIX"].valt>2 ? "nő, arany-barát" : "csökken, semleges."}`);
+  sor.push("");
+  sor.push("ZÁRÁS: " + (E.jel.startsWith("LONG")
+    ? "LONG-mood. Támasz-reakcióból vétel, stop a put wall alatt, cél a call wall – fal ELŐTT zárás!"
+    : E.jel.startsWith("SHORT")
+    ? "SHORT-mood. Fal-elutasításra játszva, vagy put wall alatti áttörésre. Gyorsulás-módban szűkebb stop!"
+    : "Kétoldali tartomány: kis méret, a falakon fade, a flip irány a figyelt váltó."));
+  return sor.join("\n");
+}
+
+// ── NAPLÓ ──
+function naploz(E){
+  const u = ALL.jeltort[0];
+  if (u && u.jel===E.jel && (Date.now()-u.t) < 30*60000) return;
+  ALL.jeltort.unshift({t:Date.now(), jel:E.jel, pont:E.pont, ar:E.ar, apont:E.apont});
+  if (ALL.jeltort.length > 15) ALL.jeltort.length = 15;
+  ment();
+}
+
+// ── FŐ CIKLUS ──
+async function frissit(){
+  if (!ALL.tdk){ $("jelzes").textContent="Add meg a TwelveData kulcsot! ⚙️"; return; }
+  const P = await adatok();
+  const au = P["XAU/USD"];
+
+  // árfolyam-tábla
+  const arak = [];
+  for (const k in P){
+    if (k.charAt(0)==="_") continue;
+    const v = P[k], c = v.valt>=0?"fel":"le";
+    arak.push(`<td>k</td><tdclass="{k}</td><td class="k</td><tdclass="{c}">v.ar!=null?v.ar.toFixed(2):"−"</td><tdclass="{v.ar!=null?v.ar.toFixed(2):"-"}</td><td class="v.ar!=null?v.ar.toFixed(2):"−"</td><tdclass="{c}">el(v.valt){el(v.valt)}el(v.valt){v.valt.toFixed(2)}%</td>`);
+  }
+  $("arak").innerHTML = arak.map(x=>"<tr>"+x+"</tr>").join("");
+
+  spark(P._spark);
+
+  const E = agy(P);
+  naploz(E);
+  $("jelzes").innerHTML =
+    `<span class="E.cls">{E.cls}">E.cls">{E.jel}</span>`
+    + `<span class="pontk p-E.apont>=7?"eros":E.apont>=4?"kozep":"gyenge"">AGY−AUTO:{E.apont>=7?"eros":E.apont>=4?"kozep":"gyenge"}">AGY-AUTO:E.apont>=7?"eros":E.apont>=4?"kozep":"gyenge"">AGY−AUTO:{E.apont}/10 E.aero({E.aero} (E.aero({E.airany})</span>`
+    + ` <span class="statusz">napi pont: el(E.pont){el(E.pont)}el(E.pont){E.pont}</span>`;
+  $("velemeny").innerHTML = E.ok.join("<br>");
+
+  const gk = gexKartyak(E.ar);
+  $("gexkartya").innerHTML = gk.html;
+  $("riasztok").innerHTML = gk.riaszt.length
+    ? gk.riaszt.map(r=>`<div class="riaszt">🚨 ${r}</div>`).join("")
+    : "🟢 Nincs szint-közelségi riasztás.";
+  $("charmskew").innerHTML = charmSkew(E.ar);
+  $("atfogo").textContent = atfogo(P, E);
+  $("utolso").textContent = "· "+new Date().toLocaleTimeString("hu-HU");
+  riportKor();
+  rajzolGexSav(E.ar);
+  rajzolJelNaplo();
+}
+
+// ── TÉMA + INDÍTÁS ──
+function valtTemaStart(){
+  if (ALL.tema==="vilagos") document.body.classList.add("vilagos");
+}
+napvaltas();
+valtTemaStart();
+rajzolInput(); rajzolGexInputs(); rajzolTabla(); rajzolJelNaplo();
+frissit(); setInterval(frissit, 120000);
+</script>
+</body>
+</html>
 
