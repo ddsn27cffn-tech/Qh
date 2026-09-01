@@ -1,0 +1,26 @@
+name: Napi GEX riport
+
+on:
+  schedule:
+    - cron: "30 13 * * 1-5"   # minden hétköznap 13:30 UTC (9:30 ET = nyitás)
+  workflow_dispatch:            # kézi futtatás gomb is
+
+permissions:
+  contents: write
+
+jobs:
+  gex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas numpy
+      - run: python gex_riport.py
+      - run: |
+          git config user.name "gex-bot"
+          git config user.email "bot@github.com"
+          git add docs/gex.json
+          git diff --cached --quiet || git commit -m "GEX riport $(date -u +%F)"
+          git push
