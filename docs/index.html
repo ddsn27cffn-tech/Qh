@@ -63,7 +63,7 @@ button.szurke { background:#30363d; }
   <div class="card"><h2>📊 GEX helyzetkép</h2><div id="gexkartya" class="statusz">Még nincs GEX-adat ⚙️</div></div>
   <div class="card"><h2>🌀 Charm &amp; 🔀 Skew</h2><div id="charmskew" class="statusz">GEX-adat nincs</div></div>
   <div class="card"><h2>Árfolyamok (élő)</h2><table id="arak"><tr><td>…</td></tr></table></div>
-  <div class="card"><h2>📈 XAU trend (4 óra)</h2><canvas id="spark" width="280" height="70"></canvas><div class="statusz" id="sparkinfo"></div></div>
+  <div class="card"><h2>📈 Arany trend (nap)</h2><canvas id="spark" width="280" height="70"></canvas><div class="statusz" id="sparkinfo"></div></div>
   <div class="card"><h2>Szintek</h2><div id="szinttabla"></div></div>
   <div class="card"><h2>📜 Jelzés-napló</h2><div id="jeltort" class="jelnaplo statusz">Még nincs…</div></div>
 
@@ -75,7 +75,7 @@ button.szurke { background:#30363d; }
   <div class="card" style="grid-column:1/-1"><h2>⚙️ Szintek beállítása</h2>
     <button class="szurke" onclick="falakSzintekbe()">🪄 Falak + flip auto-betöltése</button>
     <div id="szintek"></div>
-    <label>TwelveData kulcs (már a kódban van, itt nem kell bajlódni vele):</label>
+    <label>TwelveData kulcs (a kódban van, nem kell bajlódni vele):</label>
     <input id="tdk" type="password" placeholder="automatikusan betöltve ✓">
     <button onclick="mentSzint()">Szintek mentése</button> <span class="statusz" id="mentve"></span>
   </div>
@@ -103,12 +103,15 @@ button.szurke { background:#30363d; }
 <script>
 "use strict";
 // ════════════════════════════════════════════════
-//  QH AGY 4.0.1 — kulcs a kódban, Safari-biztos
+//  QH AGY 4.0.2 — arany-ár DUPLA forrással:
+//  1.) TwelveData XAU/USD (kulcs a kódban)
+//  2.) ha az nem ad → Yahoo GC=F (soha nem üres!)
 // ════════════════════════════════════════════════
 
 // ── A KULCS KEMÉNYEN BEÍRVA (két darabban) ──
 const KULCS_A = "4beaf1c5d89943c29d";
 const KULCS_B = "7ae9d92e10ebfe";
+const TDK = KULCS_A + KULCS_B;
 
 // ── TÁROLÓ ──
 var TAROLHATO = false;
@@ -139,9 +142,6 @@ var ALL = beolvas("qh40", {
   jeltort:[]
 });
 while (ALL.szintek.length < 6) ALL.szintek.push({s:"",t:"TAMASZ"});
-
-// a kulcs a KÓDBÓL jön, mindig – a tároló nem is tárolja többé!
-const TDK = KULCS_A + KULCS_B;
 
 function ment(){ tarol("qh40", JSON.stringify(ALL)); }
 
@@ -219,7 +219,7 @@ function mentSzint(){
     ALL.szintek[i] = { s: v===""?"":+v, t: $("tp"+i).value };
   }
   ment();
-  $("mentve").textContent = TAROLHATO ? "mentve ✓" : "csak munkamenet (a kulcs így is megmarad, az a kódban van!)";
+  $("mentve").textContent = TAROLHATO ? "mentve ✓" : "csak munkamenet (a kulcs így is megmarad!)";
   rajzolInput(); rajzolTabla(); frissit();
 }
 function mentGex(){
@@ -242,25 +242,47 @@ function falakSzintekbe(){
   ment(); rajzolInput(); rajzolTabla(); frissit();
 }
 
-// ════════════════ ADATLEKÉRÉS ════════════════
+// ════════════════ ADATLEKÉRÉS (DUPLA ARANY-FORRÁS!) ════════════════
 const proxy = u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u);
 async function adatok(){
   const P = {};
+
+  // 1. forrás: TwelveData XAU/USD (ha él, ez a legpontosabb spot)
   try {
     const j = await (await fetch("https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=15min&outputsize=16&apikey="+TDK)).json();
-    if (j.values){
+    if (j.values && j.values.length){
       const v = j.values.map(x=>+x.close).reverse();
-      if (v.length){
-        P["XAU/USD"] = { ar:v[v.length-1], valt:(v[v.length-1]/v[v.length-3]-1)*100 };
-        P._spark = v;
-      }
+      P["XAU/USD"] = { ar:v[v.length-1], valt:(v[v.length-1]/v[v.length-3]-1)*100 };
+      P._spark = v;
+      P._aranyforras = "TwelveData spot ✅";
+    } else if (j.message){
+      console.log("TD válasz: "+j.message);
     }
+  } catch(e){ console.log("TD elérhetetlen"); }
+
+  // 2. forrás: Yahoo GC=F (gold futures) – MINDIG lekérjük, tartaléknak
+  try {
+    const j2 = await (await fetch(proxy("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=2d&interval=1d"))).json();
+    const m = j2.chart.result[0].meta;
+    P["ARANY"] = { ar:m.regularMarketPrice, valt:(m.regularMarketPrice/m.chartPreviousClose-1)*100 };
   } catch(e){}
+
+  // ha a TwelveData nem adott trendet → a Yahoo 15m-ből készítünk sparkot
+  if (!P._spark){
+    try {
+      const j3 = await (await fetch(proxy("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=1d&interval=15m"))).json();
+      const c = j3.chart.result[0];
+      const v = c.indicators.quote[0].close.filter(x=>x!=null);
+      if (v.length>1) P._spark = v;
+    } catch(e){}
+  }
+
+  // egyéb piacok
   const parok = [["DXY","DX-Y.NYB"],["VIX","^VIX"],["EZÜST","SI=F"],["SPY","SPY"],["US10Y","^TNX"]];
   await Promise.all(parok.map(async function(pr){
     try {
-      const j2 = await (await fetch(proxy("https://query1.finance.yahoo.com/v8/finance/chart/"+pr[1]+"?range=2d&interval=1d"))).json();
-      const m = j2.chart.result[0].meta;
+      const j4 = await (await fetch(proxy("https://query1.finance.yahoo.com/v8/finance/chart/"+pr[1]+"?range=2d&interval=1d"))).json();
+      const m = j4.chart.result[0].meta;
       P[pr[0]] = { ar:m.regularMarketPrice, valt:(m.regularMarketPrice/m.chartPreviousClose-1)*100 };
     } catch(e){}
   }));
@@ -288,7 +310,9 @@ function spark(v){
 // ════════════════ AZ AGY ════════════════
 function agy(P){
   let pont = 0; const ok = [];
-  const au = P["XAU/USD"], ar = au && au.ar ? au.ar : null;
+  // arany: először TwelveData spot, ha nincs → Yahoo futures
+  const au = P["XAU/USD"] || P["ARANY"];
+  const ar = au && au.ar ? au.ar : null;
   const g = ALL.gex;
   const delutan = new Date().getHours() >= 13;
 
@@ -304,7 +328,9 @@ function agy(P){
   }
   if (ar){
     pont += au.valt>0.15?1:au.valt<-0.15?-1:0;
-    ok.push("Arany: <b>"+XAUkerek(ar)+"</b> ("+el(au.valt)+au.valt.toFixed(2)+"%)");
+    ok.push("Arany: <b>"+XAUkerek(ar)+"</b> ("+el(au.valt)+au.valt.toFixed(2)+"%)"+(P._aranyforras?" <span class='statusz'>["+P._aranyforras+"]</span>":" <span class='statusz'>[Yahoo futures]</span>"));
+  } else {
+    ok.push('<span class="sem">⚠️ Nincs élő arany-ár – hálózati gond!</span>');
   }
 
   let feletti=null, alatti=null, gyorsulas=false;
@@ -331,8 +357,6 @@ function agy(P){
       if (alatti.t==="PUT_FAL")  pont+=1;
       if (alatti.t==="MAGNES") ok.push("<span class='mag'>🧲 Mágnes alattad – visszahúzhat.</span>");
     }
-  } else {
-    ok.push('<span class="sem">⚠️ Nincs élő arany-ár – kulcs- vagy hálózati gond!</span>');
   }
 
   if (g.zg && ar){
@@ -416,14 +440,14 @@ function charmSkew(ar){
 // ── ÁTFOGÓ ──
 function atfogo(P, E){
   const ar = E.ar;
-  if (!ar) return "Nincs élő arany-ár – kulcs- vagy hálózati gond!";
+  if (!ar) return "Nincs élő arany-ár – hálózati gond!";
   const g = ALL.gex, sor = [];
   sor.push("📍 Az arany "+XAUkerek(ar)+"-en. AGY-AUTO: "+E.airany+"-irány, erő "+E.apont+"/10 ("+E.aero+").");
   if (g.cw && g.pw){
     const lo = Math.min(g.pw,g.cw), hi = Math.max(g.pw,g.cw);
     sor.push("");
     sor.push("FALAK: put wall "+g.pw+" – call wall "+g.cw+" ("+(hi-lo).toFixed(0)+" pontos harctér).");
-    if (ar>lo && ar<hi) sor.push("Azár a sáv BENSEJÉBEN – tartomány-kereskedelem, falaknál visszafordulás.");
+    if (ar>lo && ar<hi) sor.push("Az ár a sáv BELSEJÉBEN – tartomány-kereskedelem, falaknál visszafordulás.");
     else if (ar<lo)     sor.push("Az ár a sáv ALATT (gamma-negatív) – gyorsuló piac, ne kapd el a kést.");
     else                sor.push("Az ár a sáv FELETT – call wall felé húz (mágnes), fal ELŐTT zárás!");
   }
@@ -443,6 +467,7 @@ function atfogo(P, E){
 
 // ── NAPLÓ ──
 function naploz(E){
+  if (!E.ar) return;
   const u = ALL.jeltort[0];
   if (u && u.jel===E.jel && (Date.now()-u.t) < 30*60000) return;
   ALL.jeltort.unshift({t:Date.now(), jel:E.jel, pont:E.pont, ar:E.ar, apont:E.apont});
@@ -453,7 +478,7 @@ function naploz(E){
 // ── FŐ CIKLUS ──
 async function frissit(){
   const P = await adatok();
-  const au = P["XAU/USD"];
+  const au = P["XAU/USD"] || P["ARANY"];
 
   const arak = [];
   for (const k in P){
