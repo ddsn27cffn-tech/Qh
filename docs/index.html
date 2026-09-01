@@ -527,10 +527,11 @@ async function frissit(){
   riportKor();
   rajzolGexSav(E.ar);
   
-  autoGex().then(function(){
-  rajzolInput(); rajzolGexInputs(); rajzolTabla(); rajzolJelNaplo();
-  frissit(); setInterval(frissit, 120000);
-});
+  rajzolInput(); rajzolTabla(); rajzolJelNaplo();
+autoGex();
+frissit();
+setInterval(frissit, 120000);
+
 
 </script>
 </body>
