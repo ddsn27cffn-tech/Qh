@@ -474,6 +474,24 @@ function naploz(E){
   if (ALL.jeltort.length > 15) ALL.jeltort.length = 15;
   ment();
 }
+// ── Auto-GEX: a GitHub Actions riportjának betöltése ──
+async function autoGex(){
+  try {
+    const r = await fetch("gex.json?ts="+Date.now());   // cache-törés
+    if (!r.ok) return;
+    const g = await r.json();
+    // csak akkor írjuk felül, ha MÁS napi a mentett kézi adat
+    if (ALL.gex.autoDatum !== g.datum){
+      ALL.gex.cw=g.cw; ALL.gex.pw=g.pw; ALL.gex.zg=g.zg;
+      ALL.gex.ch=g.ch; ALL.gex.sk=g.sk;
+      ALL.gex.ido=g.ido+" (auto)";
+      ALL.gex.mentesIdo=Date.now();
+      ALL.gex.autoDatum=g.datum;
+      ment(); rajzolGexInputs();
+      console.log("Auto-GEX betöltve:", g.datum);
+    }
+  } catch(e){}
+}
 
 // ── FŐ CIKLUS ──
 async function frissit(){
@@ -508,12 +526,12 @@ async function frissit(){
   $("utolso").textContent = "· "+new Date().toLocaleTimeString("hu-HU");
   riportKor();
   rajzolGexSav(E.ar);
-  rajzolJelNaplo();
-}
+  
+  autoGex().then(function(){
+  rajzolInput(); rajzolGexInputs(); rajzolTabla(); rajzolJelNaplo();
+  frissit(); setInterval(frissit, 120000);
+});
 
-// ── INDÍTÁS ──
-rajzolInput(); rajzolGexInputs(); rajzolTabla(); rajzolJelNaplo();
-frissit(); setInterval(frissit, 120000);
 </script>
 </body>
 </html>
