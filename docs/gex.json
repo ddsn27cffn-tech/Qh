@@ -1,11 +1,11 @@
 {
   "datum": "2026-09-01",
-  "ido": "01:49 UTC",
-  "cw": 4553.6,
-  "pw": 3024.7,
-  "zg": 3024.7,
-  "ch": -2506,
-  "sk": 2.2,
-  "spot_xau": 4492.2,
+  "ido": "17:22 UTC",
+  "cw": 4520.5,
+  "pw": 3638.5,
+  "zg": 3032.0,
+  "ch": -58589,
+  "sk": -1.1,
+  "spot_xau": 4394.1,
   "forras": "GLD opcios lanc, GitHub Actions"
 }
